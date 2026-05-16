@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --bg:      #080c14;
+  --surface: #0d1422;
+  --card:    #111827;
+  --border:  #1e2d45;
+  --accent:  #00d4ff;
+  --accent2: #7c3aed;
+  --ok:      #10b981;
+  --danger:  #ef4444;
+  --text:    #e2e8f0;
+  --muted:   #64748b;
+  --fhead:   'Syne', sans-serif;
+  --fmono:   'DM Mono', monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--fhead);min-height:100vh;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 80% 50% at 10% 0%,rgba(0,212,255,.06) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 40% at 90% 100%,rgba(124,58,237,.06) 0%,transparent 60%);
+  pointer-events:none;z-index:0}
+/* ── header ── */
+header{position:sticky;top:0;z-index:100;background:rgba(8,12,20,.88);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
+  padding:0 24px;display:flex;align-items:center;gap:16px;height:58px}
+.logo{font-size:18px;font-weight:800;letter-spacing:-.5px;flex-shrink:0}
+.logo span{color:var(--accent)}
+.huser{display:flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--muted)}
+.huser strong{color:var(--accent);font-size:13px}
+.pulse{width:7px;height:7px;background:var(--ok);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+#docs-link{margin-left:auto;font-size:12px;color:var(--muted);text-decoration:none;transition:color .2s}
+#docs-link:hover{color:var(--accent)}
+/* ── shell + nav ── */
+.shell{display:flex;flex:1;position:relative;z-index:1}
+nav{width:196px;flex-shrink:0;border-right:1px solid var(--border);
+  padding:18px 10px;display:flex;flex-direction:column;gap:3px;
+  position:sticky;top:58px;height:calc(100vh - 58px);overflow-y:auto}
+.nav-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);padding:12px 10px 5px}
+nav button{display:flex;align-items:center;gap:9px;width:100%;padding:9px 12px;
+  border-radius:8px;border:none;background:transparent;color:var(--muted);
+  font-family:var(--fhead);font-size:13px;font-weight:600;cursor:pointer;
+  transition:all .15s;text-align:left}
+nav button:hover{background:var(--card);color:var(--text)}
+nav button.active{background:rgba(0,212,255,.1);color:var(--accent)}
+nav button .ic{font-size:15px}
+/* ── main ── */
+main{flex:1;padding:26px 30px;overflow-y:auto;max-width:920px}
+.view{display:none}
+.view.show{display:block}
+.pg-title{font-size:21px;font-weight:800;letter-spacing:-.5px;margin-bottom:18px}
+/* ── cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:18px;margin-bottom:18px}
+.card-lbl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:12px}
+/* ── stats row ── */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px}
+.stat-lbl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.stat-val{font-family:var(--fmono);font-size:24px;font-weight:500;color:var(--text)}
+.stat-val.c{color:var(--accent)}
+/* ── form ── */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.full{grid-column:1/-1}
+label.field{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:700;
+  letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+input,select,textarea{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:var(--fhead);font-size:13px;padding:9px 12px;
+  transition:border-color .15s;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.08)}
+textarea{resize:vertical;min-height:68px}
+select option{background:var(--card)}
+/* ── buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;
+  border:none;font-family:var(--fhead);font-size:13px;font-weight:700;cursor:pointer;
+  transition:all .15s}
+.btn-p{background:var(--accent);color:#000}
+.btn-p:hover{background:#33ddff;transform:translateY(-1px)}
+.btn-g{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-g:hover{border-color:var(--accent);color:var(--accent)}
+.btn-d{background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
+.btn-d:hover{background:rgba(239,68,68,.2)}
+.btn-s{padding:5px 10px;font-size:11px;border-radius:6px}
+/* ── table ── */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);padding:7px 12px;text-align:left;border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid rgba(30,45,69,.5);transition:background .1s}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+tbody td{padding:9px 12px;vertical-align:middle}
+/* ── badge ── */
+.badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.5px;
+  padding:3px 8px;border-radius:20px;text-transform:uppercase}
+.b-c{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.3)}
+.b-p{background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3)}
+.b-g{background:rgba(16,185,129,.1);color:var(--ok);border:1px solid rgba(16,185,129,.3)}
+.mono{font-family:var(--fmono);font-size:13px}
+/* ── empty ── */
+.empty{text-align:center;padding:44px 20px;color:var(--muted);font-size:13px}
+.empty .ei{font-size:34px;margin-bottom:10px;opacity:.35}
+/* ── summary big number ── */
+.big-num{font-family:var(--fmono);font-size:40px;font-weight:500;color:var(--accent);margin:4px 0}
+/* ── chart ── */
+.chart-wrap{position:relative;height:210px}
+/* ── loading bar ── */
+#loader{display:none;position:fixed;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent2),var(--accent));z-index:999;
+  animation:bar 1.2s ease-in-out infinite}
+@keyframes bar{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+/* ── toast ── */
+#toast{position:fixed;bottom:22px;right:22px;display:flex;align-items:center;gap:10px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:11px 18px;font-size:13px;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  z-index:9999;transform:translateY(20px);opacity:0;transition:all .25s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.ok{border-color:rgba(16,185,129,.4)}
+#toast.err{border-color:rgba(239,68,68,.4)}
+.tdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ok .tdot{background:var(--ok)}
+.err .tdot{background:var(--danger)}
+/* ── row action group ── */
+.acts{display:flex;gap:6px}
+/* ── responsive ── */
+@media(max-width:680px){
+  nav{display:none}
+  main{padding:14px}
+  .stats{grid-template-columns:1fr 1fr}
+  .fgrid{grid-template-columns:1fr}
+  .full{grid-column:auto}
+}
+</style>
+</head>
+<body>
+<div id="loader"></div>
+<header>
+<div class="logo">ex<span>·</span>pense</div>
+<div class="huser" id="huser"><div class="pulse"></div><span>No profile selected</span></div>
+<a id="docs-link" href="/docs" target="_blank">API docs ↗</a>
+</header>
+<div class="shell">
+<nav>
+<div class="nav-lbl">Track</div>
+<button class="active" onclick="nav('add')"        id="nb-add">       <span class="ic">＋</span> Add Expense</button>
+<button              onclick="nav('expenses')"  id="nb-expenses">  <span class="ic">≡</span> Expenses</button>
+<button              onclick="nav('summary')"   id="nb-summary">   <span class="ic">◎</span> Summary</button>
+<div class="nav-lbl">Manage</div>
+<button              onclick="nav('users')"     id="nb-users">     <span class="ic">◉</span> Users</button>
+<button              onclick="nav('categories')" id="nb-categories"><span class="ic">⊞</span> Categories</button>
+</nav>
+<main>
+<!-- ══════════ ADD / EDIT EXPENSE ══════════ -->
+<div class="view show" id="view-add">
+<div class="pg-title" id="eFormTitle">Add Expense</div>
+<div class="card">
+<div class="card-lbl">Expense Details</div>
+<div class="fgrid">
+<label class="field full">Title
+<input id="eTitle" placeholder="e.g. Grocery run">
+</label>
+<label class="field">Amount ($)
+<input id="eAmount" type="number" min="0.01" step="0.01" placeholder="0.00">
+</label>
+<label class="field">Date
+<input id="eDate" type="date">
+</label>
+<label class="field">Category
+<select id="eCategory"><option value="">— select —</option></select>
+</label>
+<label class="field">Assign to Profile
+<select id="eUser"><option value="">— select —</option></select>
+</label>
+<label class="field">Payment Method
+<select id="ePayment">
+<option value="">— optional —</option>
+<option>Cash</option><option>Credit Card</option>
+<option>Debit Card</option><option>Bank Transfer</option>
+<option>Mobile Pay</option><option>Other</option>
+</select>
+</label>
+<label class="field full">Notes
+<textarea id="eNotes" placeholder="Optional notes..."></textarea>
+</label>
+</div>
+<div style="display:flex;gap:8px;margin-top:2px">
+<button class="btn btn-p" onclick="saveExpense()">💾 Save Expense</button>
+<button class="btn btn-g" onclick="resetEForm()">✕ Cancel</button>
+</div>
+</div>
+</div>
+<!-- ══════════ EXPENSE LIST ══════════ -->
+<div class="view" id="view-expenses">
+<div class="pg-title">Expenses</div>
+<div class="card" style="padding:12px 16px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+<label class="field" style="flex:1;min-width:160px;margin:0">
+<span style="margin-bottom:4px;display:block">Filter by Profile</span>
+<select id="fUser" onchange="loadExpenses()">
+<option value="">All profiles</option>
+</select>
+</label>
+<button class="btn btn-g" onclick="loadExpenses()">↺ Refresh</button>
+</div>
+<div class="stats" id="expStats">
+<div class="stat"><div class="stat-lbl">Total Entries</div><div class="stat-val c" id="sCount">—</div></div>
+<div class="stat"><div class="stat-lbl">Total Spent</div>  <div class="stat-val"   id="sTotal">—</div></div>
+<div class="stat"><div class="stat-lbl">Average</div>      <div class="stat-val"   id="sAvg">—</div></div>
+</div>
+<div class="card">
+<div class="tw">
+<table>
+<thead><tr>
+<th>Title</th><th>Category</th><th>Amount</th>
+<th>Date</th><th>Method</th><th>Profile</th><th>Actions</th>
+</tr></thead>
+<tbody id="eTbody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- ══════════ MONTHLY SUMMARY ══════════ -->
+<div class="view" id="view-summary">
+<div class="pg-title">Monthly Summary</div>
+<div class="card" style="padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+<label class="field" style="flex:1;min-width:140px;margin:0">
+<span style="margin-bottom:4px;display:block">Month</span>
+<input type="month" id="smMonth" onchange="loadSummary()">
+</label>
+<label class="field" style="flex:1;min-width:160px;margin:0">
+<span style="margin-bottom:4px;display:block">Profile</span>
+<select id="smUser" onchange="loadSummary()"><option value="">All profiles</option></select>
+</label>
+</div>
+<div class="card">
+<div class="stat-lbl">Total This Month</div>
+<div class="big-num" id="smTotal">$0.00</div>
+<div style="font-size:12px;color:var(--muted)" id="smLabel"></div>
+</div>
+<div class="card">
+<div class="card-lbl">Category Breakdown</div>
+<div class="chart-wrap" style="margin-bottom:14px"><canvas id="smChart"></canvas></div>
+<div class="tw">
+<table>
+<thead><tr><th>Category</th><th style="text-align:right">Amount</th></tr></thead>
+<tbody id="smTbody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- ══════════ USERS ══════════ -->
+<div class="view" id="view-users">
+<div class="pg-title">User Profiles</div>
+<div class="card">
+<div class="card-lbl" id="uFormLbl">New Profile</div>
+<div class="fgrid">
+<label class="field">Full Name<input id="uName"  placeholder="Jane Doe"></label>
+<label class="field">Email    <input id="uEmail" type="email" placeholder="jane@example.com"></label>
+<label class="field">Phone (optional)<input id="uPhone" placeholder="+1 555 000 0000"></label>
+</div>
+<div style="display:flex;gap:8px;margin-top:2px">
+<button class="btn btn-p" onclick="saveUser()">💾 Save Profile</button>
+<button class="btn btn-g" onclick="resetUForm()">✕ Cancel</button>
+</div>
+</div>
+<div class="card">
+<div class="card-lbl">All Profiles</div>
+<div class="tw">
+<table>
+<thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody id="uTbody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- ══════════ CATEGORIES ══════════ -->
+<div class="view" id="view-categories">
+<div class="pg-title">Categories</div>
+<div class="card">
+<div class="card-lbl" id="cFormLbl">New Category</div>
+<div class="fgrid">
+<label class="field">Name<input id="cName" placeholder="e.g. Groceries"></label>
+<label class="field">Description (optional)<input id="cDesc" placeholder="Short description"></label>
+</div>
+<div style="display:flex;gap:8px;margin-top:2px">
+<button class="btn btn-p" onclick="saveCategory()">💾 Save Category</button>
+<button class="btn btn-g" onclick="resetCForm()">✕ Cancel</button>
+</div>
+</div>
+<div class="card">
+<div class="card-lbl">All Categories</div>
+<div class="tw">
+<table>
+<thead><tr><th>Name</th><th>Description</th><th>Actions</th></tr></thead>
+<tbody id="cTbody"></tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+</div>
+<div id="toast"><div class="tdot"></div><span id="tmsg"></span></div>
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG & STATE
+// ═══════════════════════════════════════════════════════════
+const BASE = '';          // same origin as FastAPI
+let users = [], cats = [];
+let activeUser      = null;
+let editExpenseId   = null;
+let editUserId      = null;
+let editCatId       = null;
+let smChartInst     = null;
+// ═══════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════
+const $   = id => document.getElementById(id);
+const fmt = n  => '$' + Number(n).toFixed(2);
+function loader(on) { $('loader').style.display = on ? 'block' : 'none'; }
+function toast(msg, type = 'ok') {
+  const el = $('toast');
+  $('tmsg').textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 3200);
+}
+async function api(method, path, body) {
+  loader(true);
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const res  = await fetch(BASE + path, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    return data;
+  } catch (e) {
+    toast(e.message, 'err');
+    throw e;
+  } finally {
+    loader(false);
+  }
+}
+// ═══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function nav(v) {
+  document.querySelectorAll('.view').forEach(x => x.classList.remove('show'));
+  document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
+  $('view-' + v).classList.add('show');
+  $('nb-' + v).classList.add('active');
+  if (v === 'expenses')   loadExpenses();
+  if (v === 'summary')    loadSummary();
+  if (v === 'users')      renderUsers();
+  if (v === 'categories') renderCats();
+}
+// ═══════════════════════════════════════════════════════════
+//  HEADER
+// ═══════════════════════════════════════════════════════════
+function updateHeader() {
+  $('huser').innerHTML = activeUser
+    ? `<div class="pulse"></div><span>Profile: <strong>${activeUser.name}</strong></span>`
+    : `<div class="pulse"></div><span>No profile selected</span>`;
+}
+// ═══════════════════════════════════════════════════════════
+//  SELECTS — refresh category & user dropdowns
+// ═══════════════════════════════════════════════════════════
+function refreshSelects() {
+  // Expense form selects
+  const ec = $('eCategory'), eu = $('eUser');
+  const ecv = ec.value, euv = eu.value;
+  ec.innerHTML = '<option value="">— select —</option>';
+  eu.innerHTML = '<option value="">— select —</option>';
+  cats.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; ec.appendChild(o); });
+  users.forEach(u => { const o=document.createElement('option'); o.value=u.id; o.textContent=u.name; eu.appendChild(o); });
+  if (ecv) ec.value = ecv;
+  if (euv) eu.value = euv;
+  if (!euv && activeUser) eu.value = activeUser.id;
+  // Filter user selects
+  ['fUser','smUser'].forEach(id => {
+    const el = $(id), cur = el.value;
+    el.innerHTML = '<option value="">All profiles</option>';
+    users.forEach(u => { const o=document.createElement('option'); o.value=u.id; o.textContent=u.name; el.appendChild(o); });
+    if (cur) el.value = cur;
+  });
+}
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+async function boot() {
+  $('eDate').value    = new Date().toISOString().slice(0,10);
+  $('smMonth').value  = new Date().toISOString().slice(0,7);
+  try {
+    [users, cats] = await Promise.all([api('GET','/users'), api('GET','/categories')]);
+  } catch(_) {}
+  refreshSelects();
+  updateHeader();
+}
+boot();
+// ═══════════════════════════════════════════════════════════
+//  USERS
+// ═══════════════════════════════════════════════════════════
+async function saveUser() {
+  const name  = $('uName').value.trim();
+  const email = $('uEmail').value.trim();
+  const phone = $('uPhone').value.trim();
+  if (!name || !email) return toast('Name and email are required', 'err');
+  try {
+    if (editUserId) {
+      await api('PUT', `/users/${editUserId}`, { name, email, phone });
+      if (activeUser && activeUser.id === editUserId) activeUser = { ...activeUser, name, email, phone };
+      toast('Profile updated');
+    } else {
+      await api('POST', '/users', { name, email, phone });
+      toast('Profile created');
+    }
+    resetUForm();
+    users = await api('GET', '/users');
+    refreshSelects();
+    renderUsers();
+    updateHeader();
+  } catch(_) {}
+}
+function resetUForm() {
+  editUserId = null;
+  $('uName').value = $('uEmail').value = $('uPhone').value = '';
+  $('uFormLbl').textContent = 'New Profile';
+}
+function editUser(id) {
+  const u = users.find(u => u.id === id); if (!u) return;
+  editUserId = id;
+  $('uName').value  = u.name;
+  $('uEmail').value = u.email;
+  $('uPhone').value = u.phone || '';
+  $('uFormLbl').textContent = 'Edit Profile';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+async function deleteUser(id) {
+  if (!confirm('Delete profile? All their expenses will also be deleted.')) return;
+  try {
+    await api('DELETE', `/users/${id}`);
+    if (activeUser && activeUser.id === id) { activeUser = null; updateHeader(); }
+    users = await api('GET', '/users');
+    refreshSelects();
+    renderUsers();
+    toast('Profile deleted');
+  } catch(_) {}
+}
+function setActive(id) {
+  activeUser = users.find(u => u.id === id) || null;
+  updateHeader();
+  refreshSelects();
+  renderUsers();
+  toast('Active profile: ' + (activeUser?.name || '—'));
+}
+function renderUsers() {
+  const tb = $('uTbody');
+  if (!users.length) {
+    tb.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="ei">◉</div>No profiles yet.</div></td></tr>`;
+    return;
+  }
+  tb.innerHTML = users.map(u => `
+<tr>
+<td><strong>${u.name}</strong></td>
+<td style="color:var(--muted);font-size:12px">${u.email}</td>
+<td style="color:var(--muted);font-size:12px">${u.phone || '—'}</td>
+<td>${activeUser && activeUser.id===u.id
+          ? `<span class="badge b-g">Active</span>`
+          : `<button class="btn btn-g btn-s" onclick="setActive(${u.id})">Set Active</button>`}</td>
+<td><div class="acts">
+<button class="btn btn-g btn-s" onclick="editUser(${u.id})">Edit</button>
+<button class="btn btn-d btn-s" onclick="deleteUser(${u.id})">Delete</button>
+</div></td>
+</tr>`).join('');
+}
+// ═══════════════════════════════════════════════════════════
+//  CATEGORIES
+// ═══════════════════════════════════════════════════════════
+async function saveCategory() {
+  const name = $('cName').value.trim();
+  const desc = $('cDesc').value.trim();
+  if (!name) return toast('Category name required', 'err');
+  try {
+    if (editCatId) {
+      await api('PUT', `/categories/${editCatId}`, { name, description: desc });
+      toast('Category updated');
+    } else {
+      await api('POST', '/categories', { name, description: desc });
+      toast('Category created');
+    }
+    resetCForm();
+    cats = await api('GET', '/categories');
+    refreshSelects();
+    renderCats();
+  } catch(_) {}
+}
+function resetCForm() {
+  editCatId = null;
+  $('cName').value = $('cDesc').value = '';
+  $('cFormLbl').textContent = 'New Category';
+}
+function editCat(id) {
+  const c = cats.find(c => c.id === id); if (!c) return;
+  editCatId = id;
+  $('cName').value = c.name;
+  $('cDesc').value = c.description || '';
+  $('cFormLbl').textContent = 'Edit Category';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+async function deleteCat(id) {
+  if (!confirm('Delete category?')) return;
+  try {
+    await api('DELETE', `/categories/${id}`);
+    cats = await api('GET', '/categories');
+    refreshSelects();
+    renderCats();
+    toast('Category deleted');
+  } catch(_) {}
+}
+function renderCats() {
+  const tb = $('cTbody');
+  if (!cats.length) {
+    tb.innerHTML = `<tr><td colspan="3"><div class="empty"><div class="ei">⊞</div>No categories yet.</div></td></tr>`;
+    return;
+  }
+  tb.innerHTML = cats.map(c => `
+<tr>
+<td><strong>${c.name}</strong></td>
+<td style="color:var(--muted);font-size:12px">${c.description || '—'}</td>
+<td><div class="acts">
+<button class="btn btn-g btn-s" onclick="editCat(${c.id})">Edit</button>
+<button class="btn btn-d btn-s" onclick="deleteCat(${c.id})">Delete</button>
+</div></td>
+</tr>`).join('');
+}
+// ═══════════════════════════════════════════════════════════
+//  EXPENSES
+// ═══════════════════════════════════════════════════════════
+async function saveExpense() {
+  const title    = $('eTitle').value.trim();
+  const amount   = parseFloat($('eAmount').value);
+  const date     = $('eDate').value;
+  const catId    = parseInt($('eCategory').value);
+  const userId   = parseInt($('eUser').value);
+  const payment  = $('ePayment').value;
+  const notes    = $('eNotes').value.trim();
+  if (!title)            return toast('Title is required', 'err');
+  if (!amount || amount <= 0) return toast('Amount must be > 0', 'err');
+  if (!date)             return toast('Date is required', 'err');
+  if (!catId)            return toast('Select a category', 'err');
+  if (!userId)           return toast('Select a profile', 'err');
+  const body = { title, amount, date, category_id: catId, user_id: userId,
+                 payment_method: payment, notes };
+  try {
+    if (editExpenseId) {
+      await api('PUT', `/expenses/${editExpenseId}`, body);
+      toast('Expense updated');
+    } else {
+      await api('POST', '/expenses', body);
+      toast('Expense saved');
+    }
+    resetEForm();
+    nav('expenses');
+  } catch(_) {}
+}
+function resetEForm() {
+  editExpenseId = null;
+  $('eTitle').value   = '';
+  $('eAmount').value  = '';
+  $('eDate').value    = new Date().toISOString().slice(0,10);
+  $('eCategory').value = '';
+  $('eUser').value    = activeUser ? activeUser.id : '';
+  $('ePayment').value = '';
+  $('eNotes').value   = '';
+  $('eFormTitle').textContent = 'Add Expense';
+}
+async function editExpense(id) {
+  let e;
+  try { e = await api('GET', `/expenses/${id}`); } catch(_) { return; }
+  editExpenseId = id;
+  $('eTitle').value    = e.title;
+  $('eAmount').value   = e.amount;
+  $('eDate').value     = e.date;
+  $('eCategory').value = e.category_id;
+  $('eUser').value     = e.user_id;
+  $('ePayment').value  = e.payment_method || '';
+  $('eNotes').value    = e.notes || '';
+  $('eFormTitle').textContent = 'Edit Expense';
+  nav('add');
+}
+async function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  try {
+    await api('DELETE', `/expenses/${id}`);
+    toast('Expense deleted');
+    loadExpenses();
+  } catch(_) {}
+}
+async function loadExpenses() {
+  const uid  = $('fUser').value;
+  let path   = '/expenses';
+  if (uid) path += '?user_id=' + uid;
+  let exps = [];
+  try { exps = await api('GET', path); } catch(_) { return; }
+  // Stats
+  const total = exps.reduce((s,e) => s + e.amount, 0);
+  const avg   = exps.length ? total / exps.length : 0;
+  $('sCount').textContent = exps.length;
+  $('sTotal').textContent = fmt(total);
+  $('sAvg').textContent   = fmt(avg);
+  const catMap  = Object.fromEntries(cats.map(c  => [c.id,  c.name]));
+  const userMap = Object.fromEntries(users.map(u => [u.id,  u.name]));
+  const tb = $('eTbody');
+  if (!exps.length) {
+    tb.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="ei">≡</div>No expenses found.</div></td></tr>`;
+    return;
+  }
+  tb.innerHTML = exps.map(e => `
+<tr>
+<td>
+<strong>${e.title}</strong>
+        ${e.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${e.notes}</div>` : ''}
+</td>
+<td><span class="badge b-c">${catMap[e.category_id] || e.category_id}</span></td>
+<td class="mono">${fmt(e.amount)}</td>
+<td class="mono" style="font-size:12px;color:var(--muted)">${e.date}</td>
+<td>${e.payment_method ? `<span class="badge b-p">${e.payment_method}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+<td style="font-size:12px;color:var(--muted)">${userMap[e.user_id] || '—'}</td>
+<td><div class="acts">
+<button class="btn btn-g btn-s" onclick="editExpense(${e.id})">Edit</button>
+<button class="btn btn-d btn-s" onclick="deleteExpense(${e.id})">Delete</button>
+</div></td>
+</tr>`).join('');
+}
+// ═══════════════════════════════════════════════════════════
+//  MONTHLY SUMMARY
+// ═══════════════════════════════════════════════════════════
+async function loadSummary() {
+  const val = $('smMonth').value;
+  if (!val) return;
+  const [yr, mo] = val.split('-');
+  const uid = $('smUser').value;
+  let path = `/expenses/summary/monthly?year=${yr}&month=${mo}`;
+  if (uid) path += '&user_id=' + uid;
+  let data;
+  try { data = await api('GET', path); } catch(_) { return; }
+  const total    = data.total || 0;
+  const catTots  = data.categories || [];
+  const catMap   = Object.fromEntries(cats.map(c => [c.id, c.name]));
+  $('smTotal').textContent = fmt(total);
+  $('smLabel').textContent = new Date(yr, mo - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+  const tb = $('smTbody');
+  if (!catTots.length) {
+    tb.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:20px">No expenses this month.</td></tr>`;
+  } else {
+    tb.innerHTML = catTots.map(c => `
+<tr>
+<td><span class="badge b-c">${catMap[c.category_id] || c.category_id}</span></td>
+<td style="text-align:right;font-family:var(--fmono)">${fmt(c.total)}</td>
+</tr>`).join('');
+  }
+  // Chart
+  if (smChartInst) smChartInst.destroy();
+  smChartInst = new Chart($('smChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: catTots.map(c => catMap[c.category_id] || c.category_id),
+      datasets: [{
+        data: catTots.map(c => c.total),
+        backgroundColor: 'rgba(0,212,255,.2)',
+        borderColor:     'rgba(0,212,255,.8)',
+        borderWidth: 1.5,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#64748b', font: { family: 'DM Mono' } } },
+        y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#64748b', font: { family: 'DM Mono' }, callback: v => '$'+v } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
